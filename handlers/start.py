@@ -1,7 +1,8 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
 
+from config import ADMIN_ID
 from database.db import get_db
 from database.models import get_user_language, set_user_language
 from keyboards.keyboards import language_kb, main_menu_kb
@@ -21,19 +22,29 @@ async def show_main_menu(target, lang: str, name: str) -> None:
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
-    db = await get_db()
+async def cmd_start(message: Message, bot: Bot) -> None:
+    db   = await get_db()
     lang = await get_user_language(db, message.from_user.id)
+    user = message.from_user
+
+    # Уведомляем админа
+    username = f"@{user.username}" if user.username else "—"
+    await bot.send_message(
+        ADMIN_ID,
+        f"👤 <b>Новый /start</b>\n\n"
+        f"🆔 ID: <code>{user.id}</code>\n"
+        f"👤 Имя: {user.full_name}\n"
+        f"🔗 Username: {username}\n"
+        f"🌍 Язык TG: {user.language_code or '—'}\n"
+        f"📱 Бот: {'новый' if lang is None else 'вернулся'}",
+        parse_mode="HTML",
+    )
 
     if lang is None:
-        # Новый пользователь — просим выбрать язык
-        await message.answer(
-            t("ru", "choose_language"),
-            reply_markup=language_kb(),
-        )
+        await message.answer(t("ru", "choose_language"), reply_markup=language_kb())
         return
 
-    await show_main_menu(message, lang, message.from_user.full_name)
+    await show_main_menu(message, lang, user.full_name)
 
 
 @router.message(Command("language"))
