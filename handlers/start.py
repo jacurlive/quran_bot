@@ -41,6 +41,13 @@ async def cmd_language(message: Message) -> None:
     await message.answer(t("ru", "choose_language"), reply_markup=language_kb())
 
 
+@router.message(Command("help"))
+async def cmd_help(message: Message) -> None:
+    db   = await get_db()
+    lang = await get_user_language(db, message.from_user.id) or "ru"
+    await message.answer(t(lang, "help"), parse_mode="HTML")
+
+
 @router.callback_query(F.data.startswith("lang:"))
 async def on_language_chosen(call: CallbackQuery) -> None:
     lang = call.data.split(":")[1]  # "ru" or "uz"

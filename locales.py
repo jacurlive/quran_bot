@@ -16,6 +16,19 @@ TEXTS = {
         "btn_share":          "🔗 Поделиться",
         "inline_query_text":  "Чтецы Корана",
 
+        "help": (
+            "📌 <b>Как пользоваться ботом:</b>\n\n"
+            "1️⃣ Нажмите <b>«Выберите чтеца»</b> и выберите чтеца\n\n"
+            "2️⃣ Отправьте номер суры или аята:\n"
+            "• <code>3</code> — сура №3 целиком\n"
+            "• <code>6:12</code> — аят 12 из суры 6\n\n"
+            "3️⃣ Используйте кнопки под аудио для навигации ◀️ ▶️\n\n"
+            "📋 <b>Команды:</b>\n"
+            "/start — главное меню\n"
+            "/language — сменить язык\n"
+            "/help — эта справка"
+        ),
+
         "search_help": (
             "🟥 Для этого чтеца доступен поиск по сурам и аятам.\n\n"
             "◼️ Введите сообщение в одном из следующих форматов —\n\n"
@@ -69,6 +82,19 @@ TEXTS = {
         "btn_choose_reciter": "🎙 Qori tanlash",
         "btn_share":          "🔗 Ulashish",
         "inline_query_text":  "Qur'on Qorilari",
+
+        "help": (
+            "📌 <b>Botdan foydalanish:</b>\n\n"
+            "1️⃣ <b>«Qori tanlash»</b> tugmasini bosib qori tanlang\n\n"
+            "2️⃣ Sura yoki oyat raqamini yuboring:\n"
+            "• <code>3</code> — to'liq 3-sura\n"
+            "• <code>6:12</code> — 6-suradagi 12-oyat\n\n"
+            "3️⃣ Audio ostidagi tugmalar orqali navigatsiya ◀️ ▶️\n\n"
+            "📋 <b>Buyruqlar:</b>\n"
+            "/start — asosiy menyu\n"
+            "/language — tilni o'zgartirish\n"
+            "/help — ushbu yordam"
+        ),
 
         "search_help": (
             "🟥 Ushbu qori uchun sura va oyatlar bo'yicha qidiruv mavjud.\n\n"

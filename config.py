@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN: str = os.environ["BOT_TOKEN"]
-DB_PATH: str = os.getenv("DB_PATH", "quran_bot.db")
+DATABASE_URL: str = os.environ["DATABASE_URL"]
 
 API_ID: int = int(os.environ["API_ID"])
 API_HASH: str = os.environ["API_HASH"]
