@@ -1,0 +1,36 @@
+# Secrets
+.env
+
+# Pyrogram session
+*.session
+*.session-journal
+
+# Database
+*.db
+*.db-journal
+
+# Logs
+*.log
+*.pid
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Claude
+.claude/
