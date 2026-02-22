@@ -13,10 +13,10 @@ from locales import t
 
 router = Router()
 
-RE_SURAH  = re.compile(r"^\d{1,3}$")
-RE_AYAH   = re.compile(r"^(\d{1,3}):(\d{1,3})$")
+RE_SURAH = re.compile(r"^\d{1,3}$")
+RE_AYAH  = re.compile(r"^(\d{1,3}):(\d{1,3})$")
 MAX_SURAH = 114
-MAX_CAP   = 1024
+MAX_TEXT  = 4096
 
 
 @router.message(~F.via_bot)
@@ -25,7 +25,7 @@ async def handle_quran_query(message: Message) -> None:
     if not text:
         return
 
-    db      = await get_db()
+    db = await get_db()
     lang    = await get_user_language(db, message.from_user.id) or "ru"
     reciter = await get_user_reciter(db, message.from_user.id)
 
@@ -34,13 +34,16 @@ async def handle_quran_query(message: Message) -> None:
         return
 
     if m := RE_AYAH.match(text):
-        await _send_ayah(message, int(m.group(1)), int(m.group(2)), reciter, lang)
+        surah_n, ayah_n = int(m.group(1)), int(m.group(2))
+        await _send_ayah(message, surah_n, ayah_n, reciter, lang)
+
     elif RE_SURAH.match(text):
         surah_n = int(text)
         if not 1 <= surah_n <= MAX_SURAH:
             await message.answer(t(lang, "bad_surah"))
             return
         await _send_surah(message, surah_n, reciter, lang)
+
     else:
         await message.answer(t(lang, "bad_format"), parse_mode="HTML")
 
@@ -69,30 +72,14 @@ async def nav_callback(callback: CallbackQuery) -> None:
 
 # ─── helpers ────────────────────────────────────────────────────────────────
 
-async def _send_and_pin(
-    message: Message,
-    file_id: str,
-    title: str,
-    performer: str,
-    caption: str,
-    markup: InlineKeyboardMarkup,
-) -> None:
-    sent = await message.answer_audio(
-        audio=file_id,
-        title=title,
-        performer=performer,
-        caption=caption[:MAX_CAP],
-        parse_mode="HTML",
-        reply_markup=markup,
-    )
-    try:
-        await message.bot.pin_chat_message(
-            chat_id=message.chat.id,
-            message_id=sent.message_id,
-            disable_notification=True,
-        )
-    except Exception:
-        pass  # если нет прав на закрепление — молча пропускаем
+async def _send_audio(message: Message, file_id: str, title: str, performer: str) -> None:
+    await message.answer_audio(audio=file_id, title=title, performer=performer)
+
+
+async def _send_text(message: Message, text: str, markup: InlineKeyboardMarkup) -> None:
+    for i in range(0, len(text), MAX_TEXT):
+        kb = markup if i + MAX_TEXT >= len(text) else None
+        await message.answer(text[i:i + MAX_TEXT], parse_mode="HTML", reply_markup=kb)
 
 
 # ─── surah ──────────────────────────────────────────────────────────────────
@@ -102,10 +89,9 @@ async def _send_surah(message: Message, surah_n: int, reciter, lang: str) -> Non
     cached = await get_cached(db, reciter.identifier, surah_n, None)
 
     if cached:
+        await _send_audio(message, cached["file_id"], cached["title"], cached["performer"])
         caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
-        await _send_and_pin(message, cached["file_id"], cached["title"],
-                            cached["performer"], caption,
-                            nav_kb("surah", surah_n, lang=lang))
+        await _send_text(message, caption, nav_kb("surah", surah_n, lang=lang))
         return
 
     wait_msg = await message.answer(t(lang, "loading_surah"))
@@ -143,8 +129,8 @@ async def _send_surah(message: Message, surah_n: int, reciter, lang: str) -> Non
     await wait_msg.delete()
 
     caption = caption_ru if lang == "ru" else caption_uz
-    await _send_and_pin(message, file_id, title, performer, caption,
-                        nav_kb("surah", surah_n, lang=lang))
+    await _send_audio(message, file_id, title, performer)
+    await _send_text(message, caption, nav_kb("surah", surah_n, lang=lang))
 
 
 # ─── ayah ───────────────────────────────────────────────────────────────────
@@ -154,10 +140,9 @@ async def _send_ayah(message: Message, surah_n: int, ayah_n: int, reciter, lang:
     cached = await get_cached(db, reciter.identifier, surah_n, ayah_n)
 
     if cached:
+        await _send_audio(message, cached["file_id"], cached["title"], cached["performer"])
         caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
-        await _send_and_pin(message, cached["file_id"], cached["title"],
-                            cached["performer"], caption,
-                            nav_kb("ayah", surah_n, ayah_n, lang=lang))
+        await _send_text(message, caption, nav_kb("ayah", surah_n, ayah_n, lang=lang))
         return
 
     wait_msg = await message.answer(t(lang, "loading_ayah"))
@@ -200,5 +185,5 @@ async def _send_ayah(message: Message, surah_n: int, ayah_n: int, reciter, lang:
     await wait_msg.delete()
 
     caption = caption_ru if lang == "ru" else caption_uz
-    await _send_and_pin(message, file_id, title, performer, caption,
-                        nav_kb("ayah", surah_n, ayah_n, lang=lang))
+    await _send_audio(message, file_id, title, performer)
+    await _send_text(message, caption, nav_kb("ayah", surah_n, ayah_n, lang=lang))
