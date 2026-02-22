@@ -7,7 +7,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from database.db import get_db
 from database.models import get_user_reciter, get_user_language, get_cached, save_to_cache
 from services.quran_api import get_surah, get_ayah
-from services.uploader import upload_audio
+from services.uploader import upload_audio, download_to_tempfile
 from keyboards.keyboards import nav_kb
 from locales import t
 
@@ -33,26 +33,25 @@ async def handle_quran_query(message: Message) -> None:
         await message.answer(t(lang, "no_reciter"), parse_mode="HTML")
         return
 
-    async with aiohttp.ClientSession() as session:
-        if m := RE_AYAH.match(text):
-            surah_n, ayah_n = int(m.group(1)), int(m.group(2))
-            await _send_ayah(message, session, surah_n, ayah_n, reciter, lang)
+    if m := RE_AYAH.match(text):
+        surah_n, ayah_n = int(m.group(1)), int(m.group(2))
+        await _send_ayah(message, surah_n, ayah_n, reciter, lang)
 
-        elif RE_SURAH.match(text):
-            surah_n = int(text)
-            if not 1 <= surah_n <= MAX_SURAH:
-                await message.answer(t(lang, "bad_surah"))
-                return
-            await _send_surah(message, session, surah_n, reciter, lang)
+    elif RE_SURAH.match(text):
+        surah_n = int(text)
+        if not 1 <= surah_n <= MAX_SURAH:
+            await message.answer(t(lang, "bad_surah"))
+            return
+        await _send_surah(message, surah_n, reciter, lang)
 
-        else:
-            await message.answer(t(lang, "bad_format"), parse_mode="HTML")
+    else:
+        await message.answer(t(lang, "bad_format"), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("nav:"))
 async def nav_callback(callback: CallbackQuery) -> None:
     await callback.answer()
-    parts = callback.data.split(":")   # nav:s:5  |  nav:a:2:286  |  nav:none
+    parts = callback.data.split(":")
 
     if parts[1] == "none":
         return
@@ -65,20 +64,13 @@ async def nav_callback(callback: CallbackQuery) -> None:
         await callback.message.answer(t(lang, "no_reciter"), parse_mode="HTML")
         return
 
-    async with aiohttp.ClientSession() as session:
-        if parts[1] == "s":
-            await _send_surah(callback.message, session, int(parts[2]), reciter, lang)
-        elif parts[1] == "a":
-            await _send_ayah(callback.message, session, int(parts[2]), int(parts[3]), reciter, lang)
+    if parts[1] == "s":
+        await _send_surah(callback.message, int(parts[2]), reciter, lang)
+    elif parts[1] == "a":
+        await _send_ayah(callback.message, int(parts[2]), int(parts[3]), reciter, lang)
 
 
 # ─── helpers ────────────────────────────────────────────────────────────────
-
-async def _download(session: aiohttp.ClientSession, url: str) -> bytes:
-    async with session.get(url, timeout=aiohttp.ClientTimeout(total=300)) as resp:
-        resp.raise_for_status()
-        return await resp.read()
-
 
 async def _send_audio(message: Message, file_id: str, title: str, performer: str) -> None:
     await message.answer_audio(audio=file_id, title=title, performer=performer)
@@ -92,21 +84,21 @@ async def _send_text(message: Message, text: str, markup: InlineKeyboardMarkup) 
 
 # ─── surah ──────────────────────────────────────────────────────────────────
 
-async def _send_surah(message: Message, session: aiohttp.ClientSession,
-                      surah_n: int, reciter, lang: str) -> None:
+async def _send_surah(message: Message, surah_n: int, reciter, lang: str) -> None:
     db     = await get_db()
     cached = await get_cached(db, reciter.identifier, surah_n, None)
 
     if cached:
-        caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
         await _send_audio(message, cached["file_id"], cached["title"], cached["performer"])
+        caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
         await _send_text(message, caption, nav_kb("surah", surah_n, lang=lang))
         return
 
     wait_msg = await message.answer(t(lang, "loading_surah"))
     try:
-        info = await get_surah(session, surah_n, reciter.identifier)
-        data = await _download(session, info.audio_url)
+        async with aiohttp.ClientSession() as session:
+            info = await get_surah(session, surah_n, reciter.identifier)
+        filepath = await download_to_tempfile(info.audio_url)
     except Exception as e:
         await wait_msg.delete()
         await message.answer(t(lang, "loading_error", e=e))
@@ -114,6 +106,7 @@ async def _send_surah(message: Message, session: aiohttp.ClientSession,
 
     title     = f"Sura {info.surah_number} - {info.name_arabic} ({info.name})"
     performer = reciter.display_name
+    filename  = f"Sura {info.surah_number} - {info.name} - {performer}.mp3"
 
     caption_ru = t("ru", "surah_caption",
         number=info.surah_number, arabic=info.name_arabic,
@@ -124,9 +117,8 @@ async def _send_surah(message: Message, session: aiohttp.ClientSession,
         name=info.name, reciter=performer,
         translation=info.name_translation, total=info.total_ayah)
 
-    filename = f"Sura {info.surah_number} - {info.name} - {performer}.mp3"
     try:
-        file_id = await upload_audio(data, filename, title=title, performer=performer)
+        file_id = await upload_audio(filepath, filename, title=title, performer=performer)
     except Exception as e:
         await wait_msg.delete()
         await message.answer(t(lang, "upload_error", e=e))
@@ -143,21 +135,21 @@ async def _send_surah(message: Message, session: aiohttp.ClientSession,
 
 # ─── ayah ───────────────────────────────────────────────────────────────────
 
-async def _send_ayah(message: Message, session: aiohttp.ClientSession,
-                     surah_n: int, ayah_n: int, reciter, lang: str) -> None:
+async def _send_ayah(message: Message, surah_n: int, ayah_n: int, reciter, lang: str) -> None:
     db     = await get_db()
     cached = await get_cached(db, reciter.identifier, surah_n, ayah_n)
 
     if cached:
-        caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
         await _send_audio(message, cached["file_id"], cached["title"], cached["performer"])
+        caption = cached["caption_ru"] if lang == "ru" else cached["caption_uz"]
         await _send_text(message, caption, nav_kb("ayah", surah_n, ayah_n, lang=lang))
         return
 
     wait_msg = await message.answer(t(lang, "loading_ayah"))
     try:
-        ayah = await get_ayah(session, surah_n, ayah_n, reciter.identifier)
-        data = await _download(session, ayah.audio_url)
+        async with aiohttp.ClientSession() as session:
+            ayah = await get_ayah(session, surah_n, ayah_n, reciter.identifier)
+        filepath = await download_to_tempfile(ayah.audio_url)
     except ClientResponseError as e:
         await wait_msg.delete()
         if e.status == 404:
@@ -172,6 +164,7 @@ async def _send_ayah(message: Message, session: aiohttp.ClientSession,
 
     title     = f"{ayah.surah_name} {surah_n}:{ayah_n}"
     performer = reciter.display_name
+    filename  = f"{ayah.surah_name} {surah_n}-{ayah_n} - {performer}.mp3"
 
     caption_ru = t("ru", "ayah_caption",
         surah_name=ayah.surah_name, surah=surah_n, ayah=ayah_n,
@@ -180,9 +173,8 @@ async def _send_ayah(message: Message, session: aiohttp.ClientSession,
         surah_name=ayah.surah_name, surah=surah_n, ayah=ayah_n,
         reciter=performer, translation=ayah.uzbek_text)
 
-    filename = f"{ayah.surah_name} {surah_n}-{ayah_n} - {performer}.mp3"
     try:
-        file_id = await upload_audio(data, filename, title=title, performer=performer)
+        file_id = await upload_audio(filepath, filename, title=title, performer=performer)
     except Exception as e:
         await wait_msg.delete()
         await message.answer(t(lang, "upload_error", e=e))
