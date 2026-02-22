@@ -64,6 +64,9 @@ async def nav_callback(callback: CallbackQuery) -> None:
         await callback.message.answer(t(lang, "no_reciter"), parse_mode="HTML")
         return
 
+    # Удаляем текущий текст с кнопками — появится новый
+    await callback.message.delete()
+
     if parts[1] == "s":
         await _send_surah(callback.message, int(parts[2]), reciter, lang)
     elif parts[1] == "a":
