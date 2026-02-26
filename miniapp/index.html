@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>القرآن الكريم</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0F1117;
+      --surface:     #1A1D27;
+      --surface-2:   #252836;
+      --primary:     #4E9E6A;
+      --primary-10:  rgba(78,158,106,0.12);
+      --primary-20:  rgba(78,158,106,0.22);
+      --gold:        #C9A96E;
+      --text:        #E8E8E8;
+      --text-2:      #A0A8B8;
+      --text-3:      #565E72;
+      --border:      #2A2F3E;
+      --shadow:      rgba(0,0,0,0.35);
+      --radius:      18px;
+      --radius-sm:   12px;
+      --nav-h:       64px;
+    }
+    [data-theme="light"] {
+      --bg:          #F5F1EC;
+      --surface:     #FFFFFF;
+      --surface-2:   #EDEBE7;
+      --primary:     #3A6B4A;
+      --primary-10:  rgba(58,107,74,0.10);
+      --primary-20:  rgba(58,107,74,0.20);
+      --gold:        #B08D57;
+      --text:        #1A1A1A;
+      --text-2:      #555555;
+      --text-3:      #999999;
+      --border:      #E5E1DB;
+      --shadow:      rgba(0,0,0,0.06);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #app {
+      height: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── SCREENS ─────────────────────────────── */
+    .screen {
+      position: absolute;
+      inset: 0;
+      bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .screen.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateY(0);
+    }
+
+    /* ── BOTTOM NAV ───────────────────────────── */
+    #bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      transition: color 0.15s;
+      padding: 6px 0 0;
+      position: relative;
+    }
+    .nav-btn.active { color: var(--primary); }
+    .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.7; }
+    .nav-btn span { font-size: 10px; font-weight: 500; letter-spacing: 0.2px; }
+    .nav-btn.active::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 28px; height: 2px;
+      background: var(--primary);
+      border-radius: 0 0 2px 2px;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SCREEN 1 · SURAH LIST
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .list-header {
+      padding: 20px 20px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .list-kicker {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 2px;
+    }
+    .list-arabic-title {
+      font-family: 'Scheherazade New', serif;
+      font-size: 26px;
+      color: var(--text);
+      direction: rtl;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .search-wrap { position: relative; }
+    .search-icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-3);
+      pointer-events: none;
+    }
+    #search-input {
+      width: 100%;
+      padding: 10px 12px 10px 38px;
+      background: var(--surface-2);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    #search-input:focus { border-color: var(--primary-20); }
+    #search-input::placeholder { color: var(--text-3); }
+
+    .surah-list-wrap { padding: 10px 14px 16px; }
+
+    .surah-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      margin-bottom: 7px;
+      cursor: pointer;
+      transition: transform 0.12s, opacity 0.12s;
+      box-shadow: 0 1px 4px var(--shadow);
+      border: 1.5px solid transparent;
+    }
+    .surah-item:active { transform: scale(0.975); opacity: 0.85; }
+    .surah-item.playing { border-color: var(--primary-20); }
+
+    .surah-num-badge {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--primary-10);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+    .surah-item.playing .surah-num-badge {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .surah-info { flex: 1; min-width: 0; }
+    .surah-name-ru {
+      font-size: 14px; font-weight: 500;
+      color: var(--text); margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .surah-name-en { font-size: 11px; color: var(--text-3); }
+
+    .surah-right { text-align: right; flex-shrink: 0; }
+    .surah-name-ar {
+      font-family: 'Scheherazade New', serif;
+      font-size: 20px; color: var(--gold);
+      direction: rtl; display: block;
+      line-height: 1.3; margin-bottom: 1px;
+    }
+    .surah-ayah-count { font-size: 10px; color: var(--text-3); }
+
+    .empty-state {
+      text-align: center; padding: 48px 20px;
+      color: var(--text-3); font-size: 14px;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SCREEN 2 · PLAYER
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    #screen-player { display: flex; flex-direction: column; }
+
+    .player-topbar {
+      display: flex; align-items: center;
+      padding: 14px 16px; gap: 10px;
+    }
+    .icon-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text);
+      box-shadow: 0 1px 4px var(--shadow);
+      flex-shrink: 0;
+      transition: transform 0.12s;
+    }
+    .icon-btn:active { transform: scale(0.9); }
+
+    /* Now-playing info block */
+    .player-info {
+      display: flex; align-items: center;
+      padding: 4px 20px 14px; gap: 12px;
+    }
+    .player-info-text { flex: 1; min-width: 0; }
+    .player-info-title {
+      font-size: 20px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .player-info-bottom {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .player-info-reciter {
+      font-size: 13px; font-weight: 500; color: var(--gold);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1;
+    }
+    .player-info-dots { flex-shrink: 0; }
+
+    /* Disc */
+    .disc-wrap {
+      flex: 1;
+      display: flex; justify-content: center; align-items: center;
+      padding: 8px 20px;
+    }
+    .disc-container {
+      position: relative;
+      width: 232px; height: 232px;
+      flex-shrink: 0;
+    }
+    .disc-ring {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .disc-container.playing .disc-ring {
+      animation: ring-wave 2.6s ease-out infinite;
+    }
+    .disc-container.playing .r1 { animation-delay: 0s; }
+    .disc-container.playing .r2 { animation-delay: 0.87s; }
+    .disc-container.playing .r3 { animation-delay: 1.73s; }
+
+    .disc-container.fading .disc-ring {
+      animation: ring-fadeout 1.4s ease-out forwards;
+    }
+    .disc-container.fading .r1 { animation-delay: 0s; }
+    .disc-container.fading .r2 { animation-delay: 0.12s; }
+    .disc-container.fading .r3 { animation-delay: 0.24s; }
+
+    @keyframes ring-wave {
+      0%   { transform: scale(1);    opacity: 0; }
+      8%   { opacity: 0.55; }
+      100% { transform: scale(1.75); opacity: 0; }
+    }
+    @keyframes ring-fadeout {
+      0%   { transform: scale(1.1); opacity: 0.4; }
+      100% { transform: scale(1.55); opacity: 0; }
+    }
+
+    .disc {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .disc-container.playing .disc {
+      box-shadow: 0 10px 50px rgba(78,158,106,0.28), 0 2px 8px rgba(0,0,0,0.12);
+      transition: box-shadow 0.6s ease;
+    }
+    .disc::before {
+      content: '';
+      position: absolute; inset: 12px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+    .disc::after {
+      content: '';
+      position: absolute; inset: 22px;
+      border-radius: 50%;
+      border: 1px dashed var(--border);
+    }
+    .disc-arabic {
+      font-family: 'Scheherazade New', serif;
+      font-size: 46px; color: var(--primary);
+      direction: rtl; line-height: 1;
+      position: relative; z-index: 1;
+    }
+    .disc-label {
+      font-size: 12px; color: var(--text-3); font-weight: 500;
+      margin-top: 8px; position: relative; z-index: 1;
+    }
+
+    .ayah-counter {
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ayah-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .ayah-dot.active { background: var(--primary); }
+
+    /* Ayah text card */
+    .ayah-card {
+      margin: 0 14px 0;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 14px 18px 12px;
+      box-shadow: 0 1px 4px var(--shadow);
+      max-height: 120px; overflow-y: auto;
+    }
+    .ayah-arabic-text {
+      font-family: 'Scheherazade New', serif;
+      font-size: 19px; line-height: 1.8;
+      color: var(--text);
+      direction: rtl; text-align: right;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ayah-translation-text {
+      font-size: 12px; line-height: 1.6;
+      color: var(--text-2);
+    }
+
+    /* Progress */
+    .progress-area { padding: 16px 20px 12px; }
+    .progress-track {
+      height: 3px; background: var(--border); border-radius: 3px;
+      position: relative; cursor: pointer; margin-bottom: 7px;
+    }
+    .progress-fill {
+      height: 100%; background: var(--primary); border-radius: 3px;
+      width: 0%; transition: width 0.4s linear;
+      position: relative;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute; right: -5px; top: -4px;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-10);
+    }
+    .progress-times {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Controls */
+    .controls-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 4px 20px 16px;
+    }
+    .ctrl {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-2);
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .ctrl:active { transform: scale(0.88); }
+    .ctrl:disabled { opacity: 0.3; pointer-events: none; }
+    .ctrl svg { width: 20px; height: 20px; }
+    .ctrl.play {
+      width: 70px; height: 70px;
+      background: var(--primary); color: #fff;
+      box-shadow: 0 6px 20px rgba(78,158,106,0.40);
+    }
+    .ctrl.play svg { width: 30px; height: 30px; }
+
+    /* Surah nav row */
+    .surah-nav-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px 20px;
+      gap: 10px;
+    }
+    .surah-nav-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 10px 12px;
+      background: var(--surface); border: none; border-radius: var(--radius-sm);
+      color: var(--text-2); font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 1px 4px var(--shadow);
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .surah-nav-btn:active { transform: scale(0.95); }
+    .surah-nav-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .surah-nav-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* Empty player */
+    .player-empty {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; padding: 40px 30px;
+      text-align: center;
+    }
+    .player-empty-ornament {
+      font-family: 'Scheherazade New', serif;
+      font-size: 60px; color: var(--border);
+      line-height: 1;
+    }
+    .player-empty-title { font-size: 17px; font-weight: 500; color: var(--text); }
+    .player-empty-sub { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+    .btn-browse {
+      margin-top: 8px;
+      padding: 12px 28px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: 50px;
+      font-size: 14px; font-weight: 500;
+      font-family: inherit; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(58,107,74,0.3);
+      transition: transform 0.1s;
+    }
+    .btn-browse:active { transform: scale(0.96); }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SCREEN 3 · RECITERS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .reciters-header {
+      padding: 24px 20px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .reciters-title { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .reciters-sub { font-size: 13px; color: var(--text-3); }
+
+    .reciters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 14px;
+    }
+    .reciter-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px 14px 16px;
+      text-align: center; cursor: pointer;
+      border: 2px solid transparent;
+      box-shadow: 0 1px 4px var(--shadow);
+      transition: transform 0.12s, border-color 0.15s;
+      position: relative;
+    }
+    .reciter-card.selected { border-color: var(--primary); }
+    .reciter-card:active { transform: scale(0.95); }
+
+    .reciter-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--primary-10);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 11px;
+      font-size: 17px; font-weight: 600;
+      color: var(--primary);
+      transition: background 0.15s, color 0.15s;
+    }
+    .reciter-card.selected .reciter-avatar { background: var(--primary); color: #fff; }
+
+    .reciter-name-text {
+      font-size: 12px; font-weight: 500;
+      color: var(--text); line-height: 1.4;
+    }
+
+    .reciter-checkmark {
+      position: absolute; top: 9px; right: 9px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--primary);
+      display: none; align-items: center; justify-content: center;
+    }
+    .reciter-card.selected .reciter-checkmark { display: flex; }
+
+    /* Waveform animation (decorative) */
+    .waveform {
+      display: flex; align-items: center;
+      justify-content: center; gap: 3px;
+      height: 20px; margin-bottom: 4px;
+    }
+    .waveform.hidden { display: none; }
+    .wave-bar {
+      width: 3px; border-radius: 3px;
+      background: var(--primary);
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(1) { height: 6px;  animation-delay: 0s; }
+    .wave-bar:nth-child(2) { height: 12px; animation-delay: 0.1s; }
+    .wave-bar:nth-child(3) { height: 16px; animation-delay: 0.2s; }
+    .wave-bar:nth-child(4) { height: 10px; animation-delay: 0.3s; }
+    .wave-bar:nth-child(5) { height: 14px; animation-delay: 0.15s; }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); opacity: 0.7; }
+      50%       { transform: scaleY(0.4); opacity: 1; }
+    }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex; gap: 0; margin-bottom: 12px;
+      background: var(--surface-2); border-radius: var(--radius-sm); padding: 3px;
+    }
+    .mode-tab {
+      flex: 1; padding: 8px 4px; border: none; cursor: pointer;
+      background: none; border-radius: calc(var(--radius-sm) - 3px);
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      color: var(--text-3); transition: all 0.15s;
+    }
+    .mode-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px var(--shadow); }
+    .mode-tab:active { transform: scale(0.97); }
+
+    /* Ayah list back header */
+    .ayah-list-header {
+      padding: 14px 16px 12px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .ayah-list-surah-info { flex: 1; }
+    .ayah-list-surah-name { font-size: 16px; font-weight: 600; color: var(--text); }
+    .ayah-list-surah-ar {
+      font-family: 'Scheherazade New', serif; font-size: 18px;
+      color: var(--gold); direction: rtl;
+    }
+    .ayah-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 14px; background: var(--surface);
+      border-radius: var(--radius-sm); margin-bottom: 7px;
+      cursor: pointer; transition: transform 0.12s, opacity 0.12s;
+      box-shadow: 0 1px 4px var(--shadow); border: 1.5px solid transparent;
+    }
+    .ayah-item:active { transform: scale(0.975); opacity: 0.85; }
+    .ayah-item.playing { border-color: var(--primary-20); }
+    .ayah-item.playing .surah-num-badge { background: var(--primary); color: #fff; }
+    .ayah-item-info { flex: 1; }
+    .ayah-item-num { font-size: 14px; font-weight: 500; color: var(--text); }
+    .ayah-item-hint { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    /* Hide ayah card in surah mode */
+    /* Surah mode: disc fills top, no ayah card */
+    .mode-surah .ayah-card { display: none; }
+    .mode-surah .player-info-dots { display: none; }
+    .mode-surah #btn-prev-ayah { display: none; }
+    .mode-surah #btn-next-ayah { display: none; }
+
+    /* Ayah mode: disc fixed, card expands fully */
+    #player-ui:not(.mode-surah) .disc-wrap {
+      flex: 0 0 auto;
+    }
+    #player-ui:not(.mode-surah) .ayah-card {
+      max-height: none;
+      overflow-y: visible;
+      flex: 1;
+    }
+
+    /* ── SCREEN 4 · PROFILE ──────────────────── */
+    .profile-header {
+      padding: 32px 20px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .profile-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--primary-10); border: 3px solid var(--primary-20);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 700; color: var(--primary);
+      overflow: hidden; flex-shrink: 0;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-name { font-size: 20px; font-weight: 700; color: var(--text); text-align: center; }
+    .profile-username { font-size: 13px; color: var(--text-3); margin-top: -6px; }
+
+    .profile-section { padding: 14px 14px 0; }
+    .profile-section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--text-3);
+      padding: 0 6px; margin-bottom: 8px;
+    }
+    .profile-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: 0 1px 4px var(--shadow); overflow: hidden;
+    }
+    .profile-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+    }
+    .profile-row:last-child { border-bottom: none; }
+    .profile-row-icon {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: var(--primary-10);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); flex-shrink: 0;
+    }
+    .profile-row-icon svg { width: 16px; height: 16px; }
+    .profile-row-body { flex: 1; min-width: 0; }
+    .profile-row-label { font-size: 11px; color: var(--text-3); margin-bottom: 1px; }
+    .profile-row-value { font-size: 14px; font-weight: 500; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── SLEEP TIMER ─────────────────────────── */
+    .sleep-row {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 20px 16px; gap: 8px;
+    }
+    .sleep-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface-2); color: var(--text-3);
+      font-family: inherit; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .sleep-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .sleep-btn.active {
+      border-color: var(--primary); background: var(--primary-10); color: var(--primary);
+    }
+    .sleep-btn:active { transform: scale(0.95); }
+
+    /* Sleep modal */
+    .sleep-modal {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.55);
+      display: flex; align-items: flex-end;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s;
+    }
+    .sleep-modal.open { opacity: 1; pointer-events: all; }
+    .sleep-sheet {
+      width: 100%; background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      padding: 8px 24px calc(28px + env(safe-area-inset-bottom,0px));
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.34,1.05,0.64,1);
+    }
+    .sleep-modal.open .sleep-sheet { transform: translateY(0); }
+    .sleep-drag-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border); margin: 10px auto 20px;
+    }
+    .sleep-sheet-title {
+      text-align: center; font-size: 17px; font-weight: 600;
+      color: var(--text); margin-bottom: 24px;
+    }
+    .sleep-dial-wrap {
+      display: flex; justify-content: center;
+      margin-bottom: 20px;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    .sleep-dial-wrap svg { touch-action: none; overflow: visible; }
+    .sleep-eos-row {
+      display: flex; justify-content: center; margin-bottom: 22px;
+    }
+    .sleep-eos-btn {
+      padding: 8px 20px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface-2); color: var(--text-2);
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .sleep-eos-btn.active {
+      border-color: var(--primary); background: var(--primary-10); color: var(--primary);
+    }
+    .sleep-eos-btn:active { transform: scale(0.95); }
+    .sleep-actions { display: flex; gap: 10px; }
+    .sleep-action-btn {
+      flex: 1; padding: 15px; border-radius: 16px; border: none;
+      font-family: inherit; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: transform 0.12s;
+    }
+    .sleep-action-btn:active { transform: scale(0.97); }
+    .sleep-cancel  { background: var(--surface-2); color: var(--text-2); }
+    .sleep-confirm { background: var(--primary);   color: #fff; }
+
+    /* ── FAVORITES ───────────────────────────── */
+    .heart-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: none; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3); flex-shrink: 0;
+      transition: color 0.15s, transform 0.15s;
+      padding: 0;
+    }
+    .heart-btn:active { transform: scale(0.85); }
+    .heart-btn.fav { color: #E05C5C; }
+    .heart-btn svg { width: 18px; height: 18px; }
+    .heart-btn.fav svg { fill: #E05C5C; stroke: #E05C5C; }
+
+    /* heart in player topbar */
+    .icon-btn.fav { color: #E05C5C; }
+    .icon-btn.fav svg { fill: #E05C5C; stroke: #E05C5C; }
+
+    /* favorites screen */
+    .favs-header {
+      padding: 20px 20px 16px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .favs-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .favs-sub   { font-size: 13px; color: var(--text-3); }
+    .favs-wrap  { padding: 10px 14px 16px; }
+
+    .fav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 14px; background: var(--surface);
+      border-radius: var(--radius-sm); margin-bottom: 7px;
+      cursor: pointer; border: 1.5px solid transparent;
+      box-shadow: 0 1px 4px var(--shadow);
+      transition: transform 0.12s, opacity 0.12s;
+    }
+    .fav-item:active { transform: scale(0.975); opacity: 0.85; }
+    .fav-badge {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: rgba(224,92,92,0.12);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .fav-badge svg { width: 16px; height: 16px; fill: #E05C5C; stroke: #E05C5C; }
+    .fav-info { flex: 1; min-width: 0; }
+    .fav-name { font-size: 14px; font-weight: 500; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fav-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .fav-ar {
+      font-family: 'Scheherazade New', serif;
+      font-size: 20px; color: var(--gold); direction: rtl; flex-shrink: 0;
+    }
+    .fav-remove {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3); transition: color 0.15s;
+    }
+    .fav-remove:active { color: #E05C5C; }
+    .fav-remove svg { width: 14px; height: 14px; }
+
+    /* Theme/Lang toggles */
+    .header-controls {
+      display: flex; gap: 6px; margin-bottom: 10px; justify-content: flex-end;
+    }
+    .toggle-btn {
+      padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--border);
+      background: var(--surface-2); color: var(--text-2);
+      font-size: 11px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px;
+    }
+    .toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .toggle-btn:active { transform: scale(0.93); }
+
+    /* Loading overlay on ayah card */
+    .ayah-card { position: relative; min-height: 80px; }
+    .ayah-loading {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; border-radius: var(--radius);
+      background: var(--surface); z-index: 2;
+    }
+    .ayah-loading .spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid var(--border); border-top-color: var(--primary);
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ayah-loading.hidden { display: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SCREEN: LIST ══════════════════════════ -->
+  <div class="screen active" id="screen-list">
+    <div class="list-header">
+      <div class="header-controls">
+        <button class="toggle-btn" id="btn-lang-ru" onclick="setLang('ru')">RU</button>
+        <button class="toggle-btn" id="btn-lang-uz" onclick="setLang('uz')">UZ</button>
+        <button class="toggle-btn" id="btn-theme" onclick="toggleTheme()">☀️</button>
+      </div>
+      <div class="list-kicker" id="list-kicker">Священный Коран</div>
+      <div class="list-arabic-title">القرآن الكريم</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-surah" onclick="setMode('surah')"></button>
+        <button class="mode-tab" id="tab-ayah" onclick="setMode('ayah')"></button>
+      </div>
+      <div class="search-wrap">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="search" id="search-input" placeholder="Поиск суры…" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="surah-list-wrap" id="surah-list"></div>
+  </div>
+
+  <!-- ══ SCREEN: FAVORITES ════════════════════ -->
+  <div class="screen" id="screen-favorites">
+    <div class="favs-header">
+      <div class="favs-title" id="favs-title">Избранное</div>
+      <div class="favs-sub" id="favs-sub">Сохранённые суры и аяты</div>
+    </div>
+    <div class="favs-wrap" id="favs-list"></div>
+  </div>
+
+  <!-- ══ SCREEN: AYAH LIST ════════════════════ -->
+  <div class="screen" id="screen-ayah-list">
+    <div class="ayah-list-header">
+      <button class="icon-btn" onclick="showScreen('list')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+      </button>
+      <div class="ayah-list-surah-info">
+        <div class="ayah-list-surah-name" id="ayah-list-title">—</div>
+        <div class="ayah-list-surah-ar" id="ayah-list-ar">—</div>
+      </div>
+    </div>
+    <div class="surah-list-wrap" id="ayah-list"></div>
+  </div>
+
+  <!-- ══ SCREEN: PLAYER ════════════════════════ -->
+  <div class="screen" id="screen-player">
+
+    <!-- Empty state (no surah selected) -->
+    <div class="player-empty" id="player-empty">
+      <div class="player-empty-ornament">﷽</div>
+      <div class="player-empty-title" id="player-empty-title">Выберите суру</div>
+      <div class="player-empty-sub" id="player-empty-sub">Перейдите к списку сур<br>и выберите любую для прослушивания</div>
+      <button class="btn-browse" id="btn-browse" onclick="showScreen('list')">Открыть список</button>
+    </div>
+
+    <!-- Player UI (hidden until surah selected) -->
+    <div id="player-ui" style="display:none; flex-direction:column; flex:1;">
+
+      <div class="player-topbar">
+        <button class="icon-btn" onclick="showScreen('list')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+        </button>
+        <div style="flex:1"></div>
+        <button class="icon-btn" onclick="showScreen('reciters')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="disc-wrap">
+        <div class="disc-container" id="disc-container">
+          <div class="disc-ring r1"></div>
+          <div class="disc-ring r2"></div>
+          <div class="disc-ring r3"></div>
+          <div class="disc" id="player-disc">
+            <div class="disc-arabic" id="disc-arabic">الفاتحة</div>
+            <div class="disc-label" id="disc-label">Сура 1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spotify-style info block -->
+      <div class="player-info">
+        <div class="player-info-text">
+          <div class="player-info-title" id="player-title">—</div>
+          <div class="player-info-bottom">
+            <div class="player-info-reciter" id="player-reciter">—</div>
+            <div class="player-info-dots">
+              <div class="ayah-counter" id="ayah-dots"></div>
+            </div>
+          </div>
+        </div>
+        <button class="icon-btn" id="player-fav-btn" onclick="toggleFav()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="ayah-card">
+        <div class="ayah-loading hidden" id="ayah-loading"><div class="spinner"></div></div>
+        <div class="ayah-arabic-text" id="ayah-arabic">—</div>
+        <div class="ayah-translation-text" id="ayah-translation">—</div>
+      </div>
+
+      <div class="progress-area">
+        <div class="progress-track" id="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-times">
+          <span id="time-current">0:00</span>
+          <span id="time-total">0:00</span>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <button class="ctrl" id="btn-prev-surah" title="Предыдущая сура">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m11 17-5-5 5-5"/><line x1="19" y1="7" x2="19" y2="17" stroke-width="2.5"/>
+          </svg>
+        </button>
+        <button class="ctrl" id="btn-prev-ayah" title="Предыдущий аят">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </button>
+        <button class="ctrl play" id="btn-play">
+          <svg id="icon-play" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg id="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+        </button>
+        <button class="ctrl" id="btn-next-ayah" title="Следующий аят">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+        <button class="ctrl" id="btn-next-surah" title="Следующая сура">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m13 17 5-5-5-5"/><line x1="5" y1="7" x2="5" y2="17" stroke-width="2.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="waveform hidden" id="waveform">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+
+      <div class="sleep-row">
+        <button class="sleep-btn" id="sleep-btn" onclick="openSleepModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span id="sleep-btn-label">Таймер</span>
+        </button>
+      </div>
+
+    </div><!-- /player-ui -->
+  </div>
+
+  <!-- ══ SCREEN: RECITERS ══════════════════════ -->
+  <div class="screen" id="screen-reciters">
+    <div class="reciters-header">
+      <div class="reciters-title" id="reciters-title">Чтецы</div>
+      <div class="reciters-sub" id="reciters-sub">Выберите голос для прослушивания</div>
+    </div>
+    <div class="reciters-grid" id="reciters-grid"></div>
+  </div>
+
+  <!-- ══ SCREEN: PROFILE ══════════════════════ -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-header">
+      <div class="profile-avatar" id="profile-avatar"></div>
+      <div class="profile-name"   id="profile-name">—</div>
+      <div class="profile-username" id="profile-username"></div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-title" id="profile-sec-info">Информация</div>
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="profile-row-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="profile-row-body">
+            <div class="profile-row-label" id="lbl-userid">Telegram ID</div>
+            <div class="profile-row-value" id="profile-id">—</div>
+          </div>
+        </div>
+        <div class="profile-row">
+          <div class="profile-row-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>
+            </svg>
+          </div>
+          <div class="profile-row-body">
+            <div class="profile-row-label" id="lbl-lang">Язык</div>
+            <div class="profile-row-value" id="profile-lang">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section" style="margin-top:14px;">
+      <div class="profile-section-title" id="profile-sec-settings">Настройки</div>
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="profile-row-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            </svg>
+          </div>
+          <div class="profile-row-body">
+            <div class="profile-row-label" id="lbl-reciter">Чтец</div>
+            <div class="profile-row-value" id="profile-reciter">—</div>
+          </div>
+        </div>
+        <div class="profile-row">
+          <div class="profile-row-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </div>
+          <div class="profile-row-body">
+            <div class="profile-row-label" id="lbl-theme">Тема</div>
+            <div class="profile-row-value" id="profile-theme">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section" style="margin-top:14px; padding-bottom:16px;">
+      <div class="profile-card">
+        <div class="profile-row" onclick="showScreen('favorites')" style="cursor:pointer;">
+          <div class="profile-row-icon" style="background:rgba(224,92,92,0.12);">
+            <svg viewBox="0 0 24 24" fill="#E05C5C" stroke="#E05C5C" stroke-width="1.5" style="width:16px;height:16px;">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+          <div class="profile-row-body">
+            <div class="profile-row-label" id="lbl-favs-count">Избранное</div>
+            <div class="profile-row-value" id="profile-favs-count">0</div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text-3)">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BOTTOM NAV ═══════════════════════════ -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" id="nav-list" onclick="showScreen('list')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <line x1="4" y1="6"  x2="20" y2="6"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="18" x2="13" y2="18"/>
+      </svg>
+      <span>Суры</span>
+    </button>
+    <button class="nav-btn" id="nav-player" onclick="showScreen('player')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon fill="currentColor" stroke="none" points="10,8 17,12 10,16"/>
+      </svg>
+      <span>Плеер</span>
+    </button>
+    <button class="nav-btn" id="nav-reciters" onclick="showScreen('reciters')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/>
+      </svg>
+      <span>Чтец</span>
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="showScreen('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span id="nav-profile-label">Профиль</span>
+    </button>
+  </nav>
+
+</div>
+<audio id="audio-el" preload="none"></audio>
+
+<!-- Sleep Timer Modal -->
+<div class="sleep-modal" id="sleep-modal">
+  <div class="sleep-sheet" id="sleep-sheet">
+    <div class="sleep-drag-handle"></div>
+    <div class="sleep-sheet-title" id="sleep-sheet-title">Таймер отключения</div>
+    <div class="sleep-dial-wrap">
+      <svg id="sleep-svg" width="240" height="240" viewBox="0 0 260 260">
+        <circle cx="130" cy="130" r="100" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
+        <circle id="sleep-arc" cx="130" cy="130" r="100" fill="none" stroke="var(--primary)"
+          stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="0 628.318" transform="rotate(-90 130 130)"/>
+        <text id="sleep-min-val" x="130" y="122" text-anchor="middle"
+          font-family="Inter,system-ui,sans-serif" font-size="52" font-weight="700"
+          fill="var(--text)">0</text>
+        <text id="sleep-min-lbl" x="130" y="152" text-anchor="middle"
+          font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="500"
+          fill="var(--text-3)">мин</text>
+        <circle id="sleep-handle" cx="130" cy="30" r="11"
+          fill="var(--primary)" stroke="var(--surface)" stroke-width="3"/>
+      </svg>
+    </div>
+    <div class="sleep-eos-row">
+      <button class="sleep-eos-btn" id="sleep-eos-btn" onclick="toggleEosSleep()">
+        <span id="sleep-eos-label">Конец суры</span>
+      </button>
+    </div>
+    <div class="sleep-actions">
+      <button class="sleep-action-btn sleep-cancel" id="sleep-cancel-btn" onclick="closeSleepModal()">Отмена</button>
+      <button class="sleep-action-btn sleep-confirm" id="sleep-confirm-btn" onclick="confirmSleepTimer()">Установить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Telegram WebApp ──────────────────────────────
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ── Theme ─────────────────────────────────────────
+let _theme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', _theme);
+function toggleTheme() {
+  _theme = _theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', _theme);
+  localStorage.setItem('theme', _theme);
+  document.getElementById('btn-theme').textContent = _theme === 'dark' ? '☀️' : '🌙';
+  updateProfileValues();
+}
+
+// ── i18n ─────────────────────────────────────────
+const I18N = {
+  ru: {
+    kicker:'Священный Коран', search:'Поиск суры…',
+    ayahs: n=>`${n} аятов`, ayah_of:(n,t)=>`Аят ${n} из ${t}`,
+    surah: n=>`Сура ${n}`, reciters:'Чтецы', reciters_sub:'Выберите голос для прослушивания',
+    empty_title:'Выберите суру', empty_sub:'Перейдите к списку сур\nи выберите любую для прослушивания',
+    open_list:'Открыть список', loading:'Загрузка…', error:'Ошибка загрузки',
+    nav_list:'Суры', nav_player:'Плеер', nav_reciters:'Чтец', not_found:'Ничего не найдено',
+    mode_surah:'По сурам', mode_ayah:'По аятам',
+    ayah_num: n=>`Аят ${n}`, full_surah:'Полная сура',
+    nav_profile:'Профиль',
+    prof_info:'Информация', prof_settings:'Настройки',
+    prof_userid:'Telegram ID', prof_lang:'Язык', prof_reciter:'Чтец', prof_theme:'Тема',
+    theme_dark:'Тёмная', theme_light:'Светлая',
+    lang_ru:'Русский 🇷🇺', lang_uz:"O'zbek 🇺🇿",
+    sleep_btn:'Таймер', sleep_off:'Выключить', sleep_end_of_surah:'Конец суры',
+    sleep_min: m => `${m} мин`, sleep_title:'Таймер отключения',
+    sleep_set:'Установить', sleep_cancel:'Отмена', sleep_unit:'мин',
+    favs:'Избранное', favs_sub:'Сохранённые суры и аяты',
+    favs_empty:'Нет избранного', favs_empty_sub:'Нажмите ♥ в плеере или списке',
+    favs_count: n => `${n} ${n===1?'элемент':n<5?'элемента':'элементов'}`,
+    favs_label:'Избранное', fav_ayah: (s,a) => `Сура ${s} · Аят ${a}`,
+    fav_surah: s => `Сура ${s}`,
+  },
+  uz: {
+    kicker:"Muqaddas Qur'on", search:'Sura qidirish…',
+    ayahs: n=>`${n} oyat`, ayah_of:(n,t)=>`${n}/${t} oyat`,
+    surah: n=>`Sura ${n}`, reciters:'Qorilar', reciters_sub:'Tinglash uchun ovoz tanlang',
+    empty_title:'Sura tanlang', empty_sub:"Suralar ro'yxatiga o'ting\nva istalganini tanlang",
+    open_list:"Ro'yxatni ochish", loading:'Yuklanmoqda…', error:'Yuklash xatosi',
+    nav_list:'Suralar', nav_player:'Pleer', nav_reciters:'Qori', not_found:'Hech narsa topilmadi',
+    mode_surah:"Suralar bo'yicha", mode_ayah:"Oyatlar bo'yicha",
+    ayah_num: n=>`${n}-oyat`, full_surah:"To'liq sura",
+    nav_profile:'Profil',
+    prof_info:'Ma\'lumot', prof_settings:'Sozlamalar',
+    prof_userid:'Telegram ID', prof_lang:'Til', prof_reciter:'Qori', prof_theme:'Mavzu',
+    theme_dark:'Qoʻngʻir', theme_light:'Yorqin',
+    lang_ru:'Ruscha 🇷🇺', lang_uz:"O'zbek 🇺🇿",
+    sleep_btn:'Taymer', sleep_off:"O'chirish", sleep_end_of_surah:'Sura oxiri',
+    sleep_min: m => `${m} daq`, sleep_title:"O'chirish taymeri",
+    sleep_set:"O'rnatish", sleep_cancel:'Bekor', sleep_unit:'daq',
+    favs:"Sevimlilar", favs_sub:"Saqlangan suralar va oyatlar",
+    favs_empty:"Sevimlilar yo'q", favs_empty_sub:"Pleyerda yoki ro'yxatda ♥ bosing",
+    favs_count: n => `${n} ta`,
+    favs_label:"Sevimlilar", fav_ayah: (s,a) => `Sura ${s} · ${a}-oyat`,
+    fav_surah: s => `Sura ${s}`,
+  }
+};
+let _lang = localStorage.getItem('lang') ||
+  (tg?.initDataUnsafe?.user?.language_code?.startsWith('uz') ? 'uz' : 'ru');
+const t = k => I18N[_lang][k];
+function setLang(lang) {
+  _lang = lang;
+  localStorage.setItem('lang', lang);
+  applyI18n();
+  renderList(document.getElementById('search-input').value);
+  renderReciters();
+  if (state.surah !== null) updatePlayerUI();
+}
+function applyI18n() {
+  const l = I18N[_lang];
+  document.getElementById('search-input').placeholder = l.search;
+  document.getElementById('list-kicker').textContent = l.kicker;
+  document.getElementById('nav-list').querySelector('span').textContent = l.nav_list;
+  document.getElementById('nav-player').querySelector('span').textContent = l.nav_player;
+  document.getElementById('nav-reciters').querySelector('span').textContent = l.nav_reciters;
+  document.getElementById('reciters-title').textContent = l.reciters;
+  document.getElementById('reciters-sub').textContent = l.reciters_sub;
+  document.getElementById('player-empty-title').textContent = l.empty_title;
+  document.getElementById('player-empty-sub').textContent = l.empty_sub;
+  document.getElementById('btn-browse').textContent = l.open_list;
+  document.getElementById('btn-lang-ru').classList.toggle('active', _lang === 'ru');
+  document.getElementById('btn-lang-uz').classList.toggle('active', _lang === 'uz');
+  document.getElementById('btn-theme').textContent = _theme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('tab-surah').textContent = t('mode_surah');
+  document.getElementById('tab-ayah').textContent  = t('mode_ayah');
+  document.getElementById('nav-profile-label').textContent = t('nav_profile');
+  document.getElementById('favs-title').textContent = t('favs');
+  document.getElementById('favs-sub').textContent   = t('favs_sub');
+  document.getElementById('lbl-favs-count').textContent = t('favs_label');
+  // profile labels
+  document.getElementById('profile-sec-info').textContent     = t('prof_info');
+  document.getElementById('profile-sec-settings').textContent = t('prof_settings');
+  document.getElementById('lbl-userid').textContent  = t('prof_userid');
+  document.getElementById('lbl-lang').textContent    = t('prof_lang');
+  document.getElementById('lbl-reciter').textContent = t('prof_reciter');
+  document.getElementById('lbl-theme').textContent   = t('prof_theme');
+  updateProfileValues();
+}
+
+function updateProfileValues() {
+  const r = RECITERS.find(x => x.id === state.reciter);
+  const reciterName = _lang === 'uz' ? RECITERS_UZ[r.id - 1] : r.name;
+  document.getElementById('profile-reciter').textContent  = reciterName;
+  document.getElementById('profile-lang').textContent     = t(_lang === 'ru' ? 'lang_ru' : 'lang_uz');
+  document.getElementById('profile-theme').textContent    = t(_theme === 'dark' ? 'theme_dark' : 'theme_light');
+  document.getElementById('profile-favs-count').textContent = t('favs_count')(_favs.length);
+}
+
+function renderProfile() {
+  const user = tg?.initDataUnsafe?.user;
+  const avatarEl = document.getElementById('profile-avatar');
+  const nameEl   = document.getElementById('profile-name');
+  const unameEl  = document.getElementById('profile-username');
+  const idEl     = document.getElementById('profile-id');
+
+  if (user) {
+    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    nameEl.textContent = fullName || 'Пользователь';
+    unameEl.textContent = user.username ? '@' + user.username : '';
+    idEl.textContent = user.id;
+    if (user.photo_url) {
+      avatarEl.innerHTML = `<img src="${user.photo_url}" alt="">`;
+    } else {
+      const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+      avatarEl.textContent = initials.toUpperCase() || '?';
+    }
+  } else {
+    // fallback for testing outside Telegram
+    nameEl.textContent  = 'Гость';
+    unameEl.textContent = '';
+    idEl.textContent    = '—';
+    avatarEl.textContent = '👤';
+  }
+  updateProfileValues();
+}
+
+// Uzbek surah names
+const UZ_NAMES = ["Fotiha","Baqara","Oli Imron","Niso","Moida","Anom","Arof","Anfol","Tavba","Yunus","Hud","Yusuf","Raad","Ibrohim","Hijr","Nahl","Isro","Kahf","Maryam","Toha","Anbiyo","Haj","Muminun","Nur","Furqon","Shuaro","Naml","Qasas","Ankabut","Rum","Luqmon","Sajda","Ahzob","Sabo","Fotir","Yosin","Soffot","Sod","Zumar","G\u02bBofir","Fussilat","Shuro","Zuxruf","Duxon","Josiya","Ahqof","Muhammad","Fath","Hujurot","Qof","Zoriyot","Tur","Najm","Qamar","Rohmon","Voqia","Hadid","Mujodala","Hashr","Mumtahana","Saf","Jumuah","Munofiqun","Tag\u02bBobun","Taloq","Tahrim","Mulk","Qalam","Haqqa","Maarij","Nuh","Jin","Muzzammil","Muddassir","Qiyomat","Inson","Mursalot","Naba","Noziot","Abasa","Takwir","Infitor","Mutaffifin","Inshiqoq","Buruj","Toriq","Alo","G\u02bBoshiya","Fajr","Balad","Shams","Layl","Zuho","Sharh","Tin","Alaq","Qadr","Bayyina","Zilzol","Odiyot","Qoria","Takosur","Asr","Humaza","Fil","Quraysh","Mo\u02bcun","Kavsar","Kofirun","Nasr","Masad","Ixlos","Falaq","Nos"];
+
+const RECITERS_UZ = ["Mishary Rashid al-Afasiy","Abu Bakr ash-Shatriy","Nosir al-Qatamiy","Yosir ad-Dosariy","Honiy ar-Rifaiy"];
+
+// ── Data ─────────────────────────────────────────
+const SURAHS = [
+  {n:1,   ar:"الفاتحة",    name:"Al-Fatiha",      ru:"Открывающая",            ayahs:7},
+  {n:2,   ar:"البقرة",     name:"Al-Baqara",       ru:"Корова",                 ayahs:286},
+  {n:3,   ar:"آل عمران",   name:"Ali 'Imran",      ru:"Семейство Имрана",       ayahs:200},
+  {n:4,   ar:"النساء",     name:"An-Nisa",          ru:"Женщины",                ayahs:176},
+  {n:5,   ar:"المائدة",    name:"Al-Ma'ida",        ru:"Трапеза",                ayahs:120},
+  {n:6,   ar:"الأنعام",    name:"Al-An'am",         ru:"Скот",                   ayahs:165},
+  {n:7,   ar:"الأعراف",    name:"Al-A'raf",         ru:"Преграды",               ayahs:206},
+  {n:8,   ar:"الأنفال",    name:"Al-Anfal",         ru:"Добыча",                 ayahs:75},
+  {n:9,   ar:"التوبة",     name:"At-Tawba",         ru:"Покаяние",               ayahs:129},
+  {n:10,  ar:"يونس",       name:"Yunus",             ru:"Иона",                   ayahs:109},
+  {n:11,  ar:"هود",        name:"Hud",               ru:"Худ",                    ayahs:123},
+  {n:12,  ar:"يوسف",       name:"Yusuf",             ru:"Иосиф",                  ayahs:111},
+  {n:13,  ar:"الرعد",      name:"Ar-Ra'd",           ru:"Гром",                   ayahs:43},
+  {n:14,  ar:"إبراهيم",    name:"Ibrahim",           ru:"Ибрагим",                ayahs:52},
+  {n:15,  ar:"الحجر",      name:"Al-Hijr",           ru:"Хиджр",                  ayahs:99},
+  {n:16,  ar:"النحل",      name:"An-Nahl",           ru:"Пчёлы",                  ayahs:128},
+  {n:17,  ar:"الإسراء",    name:"Al-Isra",           ru:"Ночное путешествие",     ayahs:111},
+  {n:18,  ar:"الكهف",      name:"Al-Kahf",           ru:"Пещера",                 ayahs:110},
+  {n:19,  ar:"مريم",       name:"Maryam",            ru:"Мария",                  ayahs:98},
+  {n:20,  ar:"طه",         name:"Ta-Ha",             ru:"Та-Ха",                  ayahs:135},
+  {n:21,  ar:"الأنبياء",   name:"Al-Anbiya",         ru:"Пророки",                ayahs:112},
+  {n:22,  ar:"الحج",       name:"Al-Hajj",           ru:"Паломничество",          ayahs:78},
+  {n:23,  ar:"المؤمنون",   name:"Al-Mu'minun",       ru:"Верующие",               ayahs:118},
+  {n:24,  ar:"النور",      name:"An-Nur",             ru:"Свет",                   ayahs:64},
+  {n:25,  ar:"الفرقان",    name:"Al-Furqan",         ru:"Различение",             ayahs:77},
+  {n:26,  ar:"الشعراء",    name:"Ash-Shu'ara",       ru:"Поэты",                  ayahs:227},
+  {n:27,  ar:"النمل",      name:"An-Naml",           ru:"Муравьи",                ayahs:93},
+  {n:28,  ar:"القصص",      name:"Al-Qasas",          ru:"Рассказ",                ayahs:88},
+  {n:29,  ar:"العنكبوت",   name:"Al-'Ankabut",       ru:"Паук",                   ayahs:69},
+  {n:30,  ar:"الروم",      name:"Ar-Rum",             ru:"Римляне",                ayahs:60},
+  {n:31,  ar:"لقمان",      name:"Luqman",             ru:"Лукман",                 ayahs:34},
+  {n:32,  ar:"السجدة",     name:"As-Sajda",           ru:"Поклон",                 ayahs:30},
+  {n:33,  ar:"الأحزاب",    name:"Al-Ahzab",           ru:"Союзники",               ayahs:73},
+  {n:34,  ar:"سبأ",        name:"Saba",               ru:"Саба",                   ayahs:54},
+  {n:35,  ar:"فاطر",       name:"Fatir",              ru:"Творец",                 ayahs:45},
+  {n:36,  ar:"يس",         name:"Ya-Sin",             ru:"Йа-Син",                 ayahs:83},
+  {n:37,  ar:"الصافات",    name:"As-Saffat",          ru:"Выстроившиеся в ряды",   ayahs:182},
+  {n:38,  ar:"ص",          name:"Sad",                ru:"Сод",                    ayahs:88},
+  {n:39,  ar:"الزمر",      name:"Az-Zumar",           ru:"Толпы",                  ayahs:75},
+  {n:40,  ar:"غافر",       name:"Ghafir",             ru:"Прощающий",              ayahs:85},
+  {n:41,  ar:"فصلت",       name:"Fussilat",           ru:"Разъяснены",             ayahs:54},
+  {n:42,  ar:"الشورى",     name:"Ash-Shura",          ru:"Совет",                  ayahs:53},
+  {n:43,  ar:"الزخرف",     name:"Az-Zukhruf",         ru:"Украшения",              ayahs:89},
+  {n:44,  ar:"الدخان",     name:"Ad-Dukhan",          ru:"Дым",                    ayahs:59},
+  {n:45,  ar:"الجاثية",    name:"Al-Jathiya",         ru:"Коленопреклонённые",     ayahs:37},
+  {n:46,  ar:"الأحقاف",    name:"Al-Ahqaf",           ru:"Барханы",                ayahs:35},
+  {n:47,  ar:"محمد",       name:"Muhammad",           ru:"Мухаммад",               ayahs:38},
+  {n:48,  ar:"الفتح",      name:"Al-Fath",            ru:"Победа",                 ayahs:29},
+  {n:49,  ar:"الحجرات",    name:"Al-Hujurat",         ru:"Покои",                  ayahs:18},
+  {n:50,  ar:"ق",          name:"Qaf",                ru:"Каф",                    ayahs:45},
+  {n:51,  ar:"الذاريات",   name:"Adh-Dhariyat",       ru:"Рассеивающие",           ayahs:60},
+  {n:52,  ar:"الطور",      name:"At-Tur",             ru:"Гора",                   ayahs:49},
+  {n:53,  ar:"النجم",      name:"An-Najm",            ru:"Звезда",                 ayahs:62},
+  {n:54,  ar:"القمر",      name:"Al-Qamar",           ru:"Луна",                   ayahs:55},
+  {n:55,  ar:"الرحمن",     name:"Ar-Rahman",          ru:"Милостивый",             ayahs:78},
+  {n:56,  ar:"الواقعة",    name:"Al-Waqi'a",          ru:"Событие",                ayahs:96},
+  {n:57,  ar:"الحديد",     name:"Al-Hadid",           ru:"Железо",                 ayahs:29},
+  {n:58,  ar:"المجادلة",   name:"Al-Mujadila",        ru:"Препирающаяся",          ayahs:22},
+  {n:59,  ar:"الحشر",      name:"Al-Hashr",           ru:"Сбор",                   ayahs:24},
+  {n:60,  ar:"الممتحنة",   name:"Al-Mumtahina",       ru:"Испытуемая",             ayahs:13},
+  {n:61,  ar:"الصف",       name:"As-Saff",            ru:"Ряды",                   ayahs:14},
+  {n:62,  ar:"الجمعة",     name:"Al-Jumu'a",          ru:"Пятница",                ayahs:11},
+  {n:63,  ar:"المنافقون",  name:"Al-Munafiqun",       ru:"Лицемеры",               ayahs:11},
+  {n:64,  ar:"التغابن",    name:"At-Taghabun",        ru:"Взаимное обвинение",     ayahs:18},
+  {n:65,  ar:"الطلاق",     name:"At-Talaq",           ru:"Развод",                 ayahs:12},
+  {n:66,  ar:"التحريم",    name:"At-Tahrim",          ru:"Запрет",                 ayahs:12},
+  {n:67,  ar:"الملك",      name:"Al-Mulk",            ru:"Власть",                 ayahs:30},
+  {n:68,  ar:"القلم",      name:"Al-Qalam",           ru:"Перо",                   ayahs:52},
+  {n:69,  ar:"الحاقة",     name:"Al-Haqqa",           ru:"Неотвратимое",           ayahs:52},
+  {n:70,  ar:"المعارج",    name:"Al-Ma'arij",         ru:"Ступени",                ayahs:44},
+  {n:71,  ar:"نوح",        name:"Nuh",                ru:"Нух",                    ayahs:28},
+  {n:72,  ar:"الجن",       name:"Al-Jinn",            ru:"Джинны",                 ayahs:28},
+  {n:73,  ar:"المزمل",     name:"Al-Muzzammil",       ru:"Закутавшийся",           ayahs:20},
+  {n:74,  ar:"المدثر",     name:"Al-Muddaththir",     ru:"Завернувшийся",          ayahs:56},
+  {n:75,  ar:"القيامة",    name:"Al-Qiyama",          ru:"Воскресение",            ayahs:40},
+  {n:76,  ar:"الإنسان",    name:"Al-Insan",           ru:"Человек",                ayahs:31},
+  {n:77,  ar:"المرسلات",   name:"Al-Mursalat",        ru:"Посылаемые",             ayahs:50},
+  {n:78,  ar:"النبأ",      name:"An-Naba",            ru:"Весть",                  ayahs:40},
+  {n:79,  ar:"النازعات",   name:"An-Nazi'at",         ru:"Исторгающие",            ayahs:46},
+  {n:80,  ar:"عبس",        name:"'Abasa",             ru:"Нахмурился",             ayahs:42},
+  {n:81,  ar:"التكوير",    name:"At-Takwir",          ru:"Скручивание",            ayahs:29},
+  {n:82,  ar:"الانفطار",   name:"Al-Infitar",         ru:"Раскалывание",           ayahs:19},
+  {n:83,  ar:"المطففين",   name:"Al-Mutaffifin",      ru:"Обвешивающие",           ayahs:36},
+  {n:84,  ar:"الانشقاق",   name:"Al-Inshiqaq",        ru:"Разрыв",                 ayahs:25},
+  {n:85,  ar:"البروج",     name:"Al-Buruj",           ru:"Созвездия",              ayahs:22},
+  {n:86,  ar:"الطارق",     name:"At-Tariq",           ru:"Ночной странник",        ayahs:17},
+  {n:87,  ar:"الأعلى",     name:"Al-A'la",            ru:"Всевышний",              ayahs:19},
+  {n:88,  ar:"الغاشية",    name:"Al-Ghashiya",        ru:"Покрывающее",            ayahs:26},
+  {n:89,  ar:"الفجر",      name:"Al-Fajr",            ru:"Заря",                   ayahs:30},
+  {n:90,  ar:"البلد",      name:"Al-Balad",           ru:"Город",                  ayahs:20},
+  {n:91,  ar:"الشمس",      name:"Ash-Shams",          ru:"Солнце",                 ayahs:15},
+  {n:92,  ar:"الليل",      name:"Al-Layl",            ru:"Ночь",                   ayahs:21},
+  {n:93,  ar:"الضحى",      name:"Ad-Duha",            ru:"Утро",                   ayahs:11},
+  {n:94,  ar:"الشرح",      name:"Ash-Sharh",          ru:"Раскрытие груди",        ayahs:8},
+  {n:95,  ar:"التين",      name:"At-Tin",             ru:"Смоковница",             ayahs:8},
+  {n:96,  ar:"العلق",      name:"Al-'Alaq",           ru:"Сгусток",                ayahs:19},
+  {n:97,  ar:"القدر",      name:"Al-Qadr",            ru:"Предопределение",        ayahs:5},
+  {n:98,  ar:"البينة",     name:"Al-Bayyina",         ru:"Ясное знамение",         ayahs:8},
+  {n:99,  ar:"الزلزلة",    name:"Az-Zalzala",         ru:"Землетрясение",          ayahs:8},
+  {n:100, ar:"العاديات",   name:"Al-'Adiyat",         ru:"Скачущие",               ayahs:11},
+  {n:101, ar:"القارعة",    name:"Al-Qari'a",          ru:"Сокрушительная",         ayahs:11},
+  {n:102, ar:"التكاثر",    name:"At-Takathur",        ru:"Страсть к умножению",    ayahs:8},
+  {n:103, ar:"العصر",      name:"Al-'Asr",            ru:"Время",                  ayahs:3},
+  {n:104, ar:"الهمزة",     name:"Al-Humaza",          ru:"Хулитель",               ayahs:9},
+  {n:105, ar:"الفيل",      name:"Al-Fil",             ru:"Слон",                   ayahs:5},
+  {n:106, ar:"قريش",       name:"Quraysh",            ru:"Курайшиты",              ayahs:4},
+  {n:107, ar:"الماعون",    name:"Al-Ma'un",           ru:"Мелкая помощь",          ayahs:7},
+  {n:108, ar:"الكوثر",     name:"Al-Kawthar",         ru:"Изобилие",               ayahs:3},
+  {n:109, ar:"الكافرون",   name:"Al-Kafirun",         ru:"Неверующие",             ayahs:6},
+  {n:110, ar:"النصر",      name:"An-Nasr",            ru:"Помощь",                 ayahs:3},
+  {n:111, ar:"المسد",      name:"Al-Masad",           ru:"Пальмовые волокна",      ayahs:5},
+  {n:112, ar:"الإخلاص",    name:"Al-Ikhlas",          ru:"Очищение веры",          ayahs:4},
+  {n:113, ar:"الفلق",      name:"Al-Falaq",           ru:"Рассвет",                ayahs:5},
+  {n:114, ar:"الناس",      name:"An-Nas",             ru:"Люди",                   ayahs:6},
+];
+
+const RECITERS = [
+  {id:1, name:"Мишари Рашид Аль-Афаси",   abbr:"МА"},
+  {id:2, name:"Абу Бакр Аш-Шатри",        abbr:"АШ"},
+  {id:3, name:"Насер Аль-Катами",          abbr:"НК"},
+  {id:4, name:"Ясир Аль-Досари",           abbr:"ЯД"},
+  {id:5, name:"Хани Ар-Рифаи",            abbr:"ХР"},
+];
+
+// Sample ayah texts for Al-Fatiha
+const FATIHA = [
+  {ar:"بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",               ru:"Во имя Аллаха, Милостивого, Милосердного"},
+  {ar:"ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ",                 ru:"Хвала Аллаху, Господу миров"},
+  {ar:"ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",                               ru:"Милостивому, Милосердному"},
+  {ar:"مَٰلِكِ يَوْمِ ٱلدِّينِ",                               ru:"Владыке Судного дня"},
+  {ar:"إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",             ru:"Тебе одному мы поклоняемся и Тебя одного просим о помощи"},
+  {ar:"ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ",                   ru:"Веди нас прямым путём"},
+  {ar:"صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ", ru:"Путём тех, кого Ты облагодетельствовал, не тех, на кого пал гнев, и не заблудших"},
+];
+
+// ── State ────────────────────────────────────────
+const state = {
+  screen:   'list',
+  surah:    null,
+  ayah:     1,
+  reciter:  parseInt(localStorage.getItem('reciter') || '1'),
+  playing:  false,
+  progress: 0,
+  mode:     'surah', // 'surah' | 'ayah'
+};
+
+// ── Navigation ───────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const navId = (name === 'ayah-list' || name === 'favorites') ? 'nav-profile' : 'nav-' + name;
+  const navEl = document.getElementById(navId);
+  if (navEl) navEl.classList.add('active');
+  state.screen = name;
+  if (name === 'profile')   renderProfile();
+  if (name === 'favorites') renderFavorites();
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById('tab-surah').classList.toggle('active', mode === 'surah');
+  document.getElementById('tab-ayah').classList.toggle('active',  mode === 'ayah');
+}
+
+function openSurahForAyahs(n) {
+  const s = SURAHS[n - 1];
+  document.getElementById('ayah-list-title').textContent = getSurahName(s);
+  document.getElementById('ayah-list-ar').textContent    = s.ar;
+  const container = document.getElementById('ayah-list');
+  container.innerHTML = Array.from({length: s.ayahs}, (_, i) => {
+    const num   = i + 1;
+    const faved = isFav('ayah', n, num);
+    return `
+    <div class="ayah-item${state.surah === n && state.ayah === num ? ' playing' : ''}" onclick="openAyah(${n}, ${num})">
+      <div class="surah-num-badge">${num}</div>
+      <div class="ayah-item-info">
+        <div class="ayah-item-num">${t('ayah_num')(num)}</div>
+      </div>
+      <button class="heart-btn${faved?' fav':''}" onclick="toggleFavAyah(${n},${num},event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+  if (state.screen !== 'ayah-list') showScreen('ayah-list');
+}
+
+function openAyah(surah, ayah) {
+  stopPlayback();
+  state.surah = surah;
+  state.ayah  = ayah;
+  state.progress = 0;
+  state.playing = true;
+  showScreen('player');
+  updatePlayerUI();
+  renderList(document.getElementById('search-input').value);
+}
+
+// ── Surah List ───────────────────────────────────
+function getSurahName(s) {
+  return _lang === 'uz' ? UZ_NAMES[s.n - 1] : s.ru;
+}
+function renderList(query = '') {
+  const q = query.trim().toLowerCase();
+  const filtered = SURAHS.filter(s =>
+    !q ||
+    s.ru.toLowerCase().includes(q) ||
+    UZ_NAMES[s.n-1].toLowerCase().includes(q) ||
+    s.name.toLowerCase().includes(q) ||
+    String(s.n).startsWith(q) ||
+    s.ar.includes(query.trim())
+  );
+  const container = document.getElementById('surah-list');
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state">${t('not_found')}</div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(s => {
+    const faved = isFav('surah', s.n, null);
+    return `
+    <div class="surah-item${state.surah === s.n ? ' playing' : ''}" onclick="openSurah(${s.n})">
+      <div class="surah-num-badge">${s.n}</div>
+      <div class="surah-info">
+        <div class="surah-name-ru">${getSurahName(s)}</div>
+        <div class="surah-name-en">${s.name}</div>
+      </div>
+      <div class="surah-right" style="display:flex;align-items:center;gap:6px;">
+        <div style="text-align:right;">
+          <span class="surah-name-ar">${s.ar}</span>
+          <div class="surah-ayah-count">${t('ayahs')(s.ayahs)}</div>
+        </div>
+        <button class="heart-btn${faved?' fav':''}" onclick="toggleFavSurah(${s.n},event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openSurah(n) {
+  if (state.mode === 'ayah') {
+    openSurahForAyahs(n);
+    return;
+  }
+  stopPlayback();
+  state.surah = n;
+  state.ayah  = 1;
+  state.progress = 0;
+  state.playing = true;
+  showScreen('player');
+  updatePlayerUI();
+  renderList(document.getElementById('search-input').value);
+}
+
+// ── Player ───────────────────────────────────────
+function updatePlayerUI() {
+  const empty  = document.getElementById('player-empty');
+  const ui     = document.getElementById('player-ui');
+
+  if (state.surah === null) {
+    empty.style.display = 'flex';
+    ui.style.display    = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  ui.style.display    = 'flex';
+
+  // Sync play/pause UI state
+  document.getElementById('icon-play').style.display  = state.playing ? 'none'  : 'block';
+  document.getElementById('icon-pause').style.display = state.playing ? 'block' : 'none';
+  document.getElementById('waveform').classList.toggle('hidden', !state.playing);
+  setDiscWaves(state.playing);
+
+  const s = SURAHS[state.surah - 1];
+  const r = RECITERS.find(x => x.id === state.reciter);
+
+  const reciterName = _lang === 'uz' ? RECITERS_UZ[r.id - 1] : r.name;
+  document.getElementById('player-title').textContent    = `${s.name} — ${getSurahName(s)}`;
+  document.getElementById('disc-arabic').textContent     = s.ar;
+  document.getElementById('disc-label').textContent      = t('surah')(s.n);
+  document.getElementById('player-reciter').textContent  = reciterName;
+
+  const dotsEl = document.getElementById('ayah-dots');
+  if (s.ayahs <= 10) {
+    dotsEl.innerHTML = Array.from({length: s.ayahs}, (_, i) =>
+      `<div class="ayah-dot${i + 1 === state.ayah ? ' active' : ''}"></div>`
+    ).join('');
+    dotsEl.style.fontSize = ''; dotsEl.style.color = ''; dotsEl.style.fontWeight = '';
+  } else {
+    dotsEl.textContent = t('ayah_of')(state.ayah, s.ayahs);
+    dotsEl.style.fontSize = '12px'; dotsEl.style.color = 'var(--text-3)'; dotsEl.style.fontWeight = '500';
+  }
+
+  document.getElementById('btn-prev-surah').disabled = s.n <= 1;
+  document.getElementById('btn-next-surah').disabled = s.n >= 114;
+  document.getElementById('btn-prev-ayah').disabled  = state.ayah <= 1;
+  document.getElementById('btn-next-ayah').disabled  = state.ayah >= s.ayahs;
+  updateProgress(state.progress);
+
+  // Surah vs ayah mode
+  const playerUi = document.getElementById('player-ui');
+  if (state.mode === 'surah') {
+    playerUi.classList.add('mode-surah');
+    document.getElementById('player-reciter').textContent = reciterName;
+    loadSurahAudio(state.surah, state.reciter);
+  } else {
+    playerUi.classList.remove('mode-surah');
+    loadAyahData(state.surah, state.ayah, state.reciter);
+  }
+  updateFavBtn();
+}
+
+// ── Real Audio ───────────────────────────────────
+const audioEl = document.getElementById('audio-el');
+const _cache  = {};
+
+async function loadSurahAudio(surah, reciter) {
+  const ck = `s:${surah}:${reciter}`;
+  if (_cache[ck]) { applyAyahData(_cache[ck]); return; }
+  try {
+    const res  = await fetch(`https://quranapi.pages.dev/api/${surah}.json`);
+    const data = await res.json();
+    const audioUrl = data.audio?.[String(reciter)]?.url || '';
+    _cache[ck] = { audioUrl, arabic: '', translation: '' };
+    applyAyahData(_cache[ck]);
+  } catch(e) { console.error('loadSurahAudio', e); }
+}
+
+async function loadAyahData(surah, ayah, reciter) {
+  const langEdition = _lang === 'uz' ? 'uz.sodik' : 'ru.kuliev';
+  const ck = `${surah}:${ayah}:${reciter}:${_lang}`;
+  if (_cache[ck]) { applyAyahData(_cache[ck]); return; }
+
+  document.getElementById('ayah-loading').classList.remove('hidden');
+  document.getElementById('ayah-arabic').style.visibility = 'hidden';
+  document.getElementById('ayah-translation').style.visibility = 'hidden';
+  try {
+    const [apiRes, trRes] = await Promise.all([
+      fetch(`https://quranapi.pages.dev/api/${surah}/${ayah}.json`),
+      fetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/${langEdition}`)
+    ]);
+    const [apiData, trData] = await Promise.all([apiRes.json(), trRes.json()]);
+    let arabic = apiData.arabic2 || apiData.arabic1 || '';
+    if (Array.isArray(arabic)) arabic = arabic[ayah - 1] || '';
+    const audioUrl = apiData.audio?.[String(reciter)]?.url || '';
+    const translation = trData.data?.text || '';
+    _cache[ck] = { audioUrl, arabic, translation };
+    applyAyahData(_cache[ck]);
+  } catch(e) {
+    document.getElementById('ayah-translation').textContent = t('error');
+    document.getElementById('ayah-loading').classList.add('hidden');
+    document.getElementById('ayah-arabic').style.visibility = '';
+    document.getElementById('ayah-translation').style.visibility = '';
+  }
+}
+
+function applyAyahData({ audioUrl, arabic, translation }) {
+  document.getElementById('ayah-loading').classList.add('hidden');
+  document.getElementById('ayah-arabic').textContent = arabic || '—';
+  document.getElementById('ayah-translation').textContent = translation || '—';
+  document.getElementById('ayah-arabic').style.visibility = '';
+  document.getElementById('ayah-translation').style.visibility = '';
+  if (state.playing && audioUrl) {
+    audioEl.src = audioUrl;
+    audioEl.play();
+  } else if (!state.playing) {
+    audioEl.src = audioUrl; // preload src for quick play
+  }
+}
+
+audioEl.addEventListener('timeupdate', () => {
+  if (!audioEl.duration) return;
+  state.progress = (audioEl.currentTime / audioEl.duration) * 100;
+  document.getElementById('progress-fill').style.width = state.progress + '%';
+  document.getElementById('time-current').textContent = formatTime(Math.floor(audioEl.currentTime));
+});
+audioEl.addEventListener('loadedmetadata', () => {
+  document.getElementById('time-total').textContent = formatTime(Math.floor(audioEl.duration));
+});
+audioEl.addEventListener('ended', () => {
+  if (state.mode === 'surah') {
+    // "end of surah" sleep timer fires here
+    if (_sleepMinutes === 'surah') { stopPlayback(); clearSleepTimer(true); return; }
+    // auto-advance to next surah
+    const nextSurah = state.surah + 1;
+    if (nextSurah > 114) { stopPlayback(); return; }
+    state.surah = nextSurah;
+    state.ayah  = 1;
+    state.progress = 0;
+    state.playing = true;
+    updatePlayerUI();
+    renderList(document.getElementById('search-input').value);
+    return;
+  }
+  const s = SURAHS[state.surah - 1];
+  if (state.ayah < s.ayahs) {
+    // "end of surah" in ayah mode — check after last ayah
+    state.ayah++; state.progress = 0; updatePlayerUI();
+    const ck = `${state.surah}:${state.ayah}:${state.reciter}:${_lang}`;
+    if (_cache[ck]?.audioUrl) { audioEl.src = _cache[ck].audioUrl; audioEl.play(); }
+  } else {
+    // last ayah of surah finished
+    if (_sleepMinutes === 'surah') { stopPlayback(); clearSleepTimer(true); return; }
+    stopPlayback();
+  }
+});
+
+function updateProgress(pct) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+function formatTime(s) {
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+let _fadingTimer = null;
+function setDiscWaves(playing) {
+  const c = document.getElementById('disc-container');
+  if (!c) return;
+  clearTimeout(_fadingTimer);
+  if (playing) {
+    c.classList.remove('fading');
+    c.classList.add('playing');
+  } else {
+    c.classList.remove('playing');
+    c.classList.add('fading');
+    _fadingTimer = setTimeout(() => c.classList.remove('fading'), 1600);
+  }
+}
+
+function togglePlay() {
+  if (!state.surah) return;
+  state.playing = !state.playing;
+  if (state.playing) {
+    document.getElementById('icon-play').style.display  = 'none';
+    document.getElementById('icon-pause').style.display = 'block';
+    setDiscWaves(true);
+    document.getElementById('waveform').classList.remove('hidden');
+    if (audioEl.src && !audioEl.src.endsWith('/')) audioEl.play();
+    else loadAyahData(state.surah, state.ayah, state.reciter);
+  } else {
+    stopPlayback();
+  }
+}
+
+function stopPlayback() {
+  state.playing = false;
+  audioEl.pause();
+  setDiscWaves(false);
+  document.getElementById('icon-play').style.display  = 'block';
+  document.getElementById('icon-pause').style.display = 'none';
+  document.getElementById('waveform').classList.add('hidden');
+}
+
+function advanceAyah(dir) {
+  const s = SURAHS[state.surah - 1];
+  const next = state.ayah + dir;
+  if (next < 1 || next > s.ayahs) return;
+  state.ayah = next;
+  state.progress = 0;
+  updatePlayerUI();
+}
+
+function advanceSurah(dir) {
+  const next = state.surah + dir;
+  if (next < 1 || next > 114) return;
+  const wasPlaying = state.playing;
+  stopPlayback();
+  state.surah = next;
+  state.ayah  = 1;
+  state.progress = 0;
+  state.playing = wasPlaying;
+  updatePlayerUI();
+  renderList(document.getElementById('search-input').value);
+}
+
+// Controls
+document.getElementById('btn-play').addEventListener('click',       togglePlay);
+document.getElementById('btn-prev-ayah').addEventListener('click',  () => advanceAyah(-1));
+document.getElementById('btn-next-ayah').addEventListener('click',  () => advanceAyah(1));
+document.getElementById('btn-prev-surah').addEventListener('click', () => advanceSurah(-1));
+document.getElementById('btn-next-surah').addEventListener('click', () => advanceSurah(1));
+
+// ── Reciters ─────────────────────────────────────
+function renderReciters() {
+  document.getElementById('reciters-grid').innerHTML = RECITERS.map(r => {
+    const name = _lang === 'uz' ? RECITERS_UZ[r.id - 1] : r.name;
+    return `
+    <div class="reciter-card${r.id === state.reciter ? ' selected' : ''}" onclick="selectReciter(${r.id})">
+      <div class="reciter-checkmark">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5">
+          <path d="m5 12 5 5L20 7"/>
+        </svg>
+      </div>
+      <div class="reciter-avatar">${r.abbr}</div>
+      <div class="reciter-name-text">${name}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectReciter(id) {
+  stopPlayback();
+  state.reciter = id;
+  localStorage.setItem('reciter', id);
+  renderReciters();
+  if (state.surah !== null) updatePlayerUI();
+  updateProfileValues();
+}
+
+// ── Search ───────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', e => {
+  renderList(e.target.value);
+});
+
+// ── Progress click (real audio seek) ─────────────
+document.getElementById('progress-track').addEventListener('click', e => {
+  if (!audioEl.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  audioEl.currentTime = pct * audioEl.duration;
+  state.progress = pct * 100;
+  updateProgress(state.progress);
+}, true);
+
+// ── Sleep Timer ──────────────────────────────────
+let _sleepInterval = null;
+let _sleepEnd      = null;    // timestamp ms
+let _sleepMinutes  = null;    // null | number | 'surah'
+
+const SLEEP_OPTIONS = [15, 30, 45, 60]; // minutes
+
+// ── Sleep Modal Dial ─────────────────────────────
+const SLEEP_MAX    = 120; // max minutes
+const SLEEP_CIRCUM = 2 * Math.PI * 100; // ≈ 628.318
+let _dialMinutes   = 30;  // pending value while modal open
+let _eosSelected   = false; // "end of surah" toggle
+
+function openSleepModal() {
+  // pre-fill dial with current value or default
+  _dialMinutes  = (typeof _sleepMinutes === 'number') ? _sleepMinutes : 30;
+  _eosSelected  = _sleepMinutes === 'surah';
+  document.getElementById('sleep-sheet-title').textContent  = t('sleep_title');
+  document.getElementById('sleep-eos-label').textContent    = t('sleep_end_of_surah');
+  document.getElementById('sleep-cancel-btn').textContent   = t('sleep_cancel');
+  document.getElementById('sleep-confirm-btn').textContent  = t('sleep_set');
+  document.getElementById('sleep-min-lbl').textContent      = t('sleep_unit');
+  document.getElementById('sleep-modal').classList.add('open');
+  document.getElementById('sleep-eos-btn').classList.toggle('active', _eosSelected);
+  updateDialUI();
+  bindDialEvents();
+}
+
+function closeSleepModal() {
+  document.getElementById('sleep-modal').classList.remove('open');
+}
+
+document.getElementById('sleep-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('sleep-modal')) closeSleepModal();
+});
+
+function toggleEosSleep() {
+  _eosSelected = !_eosSelected;
+  document.getElementById('sleep-eos-btn').classList.toggle('active', _eosSelected);
+}
+
+function confirmSleepTimer() {
+  closeSleepModal();
+  if (_eosSelected) {
+    setSleepTimer('surah');
+  } else if (_dialMinutes > 0) {
+    setSleepTimer(_dialMinutes);
+  } else {
+    clearSleepTimer(false);
+  }
+}
+
+function updateDialUI() {
+  const mins = _dialMinutes;
+  const frac = mins / SLEEP_MAX;
+  const arc  = frac * SLEEP_CIRCUM;
+  document.getElementById('sleep-arc').setAttribute('stroke-dasharray', `${arc} ${SLEEP_CIRCUM}`);
+  document.getElementById('sleep-min-val').textContent = mins;
+  // handle position: angle from top, clockwise
+  const angle = frac * 2 * Math.PI - Math.PI / 2;
+  const hx = 130 + 100 * Math.cos(angle);
+  const hy = 130 + 100 * Math.sin(angle);
+  document.getElementById('sleep-handle').setAttribute('cx', hx.toFixed(1));
+  document.getElementById('sleep-handle').setAttribute('cy', hy.toFixed(1));
+}
+
+function angleToMinutes(dx, dy) {
+  // atan2 gives angle from positive x-axis; we want 0 at top, clockwise
+  let angle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (angle < 0) angle += 2 * Math.PI;
+  const raw = (angle / (2 * Math.PI)) * SLEEP_MAX;
+  return Math.max(1, Math.min(SLEEP_MAX, Math.round(raw / 5) * 5 || 5));
+}
+
+function bindDialEvents() {
+  const svg = document.getElementById('sleep-svg');
+  const onMove = e => {
+    e.preventDefault();
+    const pt  = e.touches ? e.touches[0] : e;
+    const rect = svg.getBoundingClientRect();
+    const cx  = rect.left + rect.width  / 2;
+    const cy  = rect.top  + rect.height / 2;
+    _dialMinutes = angleToMinutes(pt.clientX - cx, pt.clientY - cy);
+    _eosSelected = false;
+    document.getElementById('sleep-eos-btn').classList.remove('active');
+    updateDialUI();
+  };
+  svg.ontouchstart = onMove;
+  svg.ontouchmove  = onMove;
+  svg.onmousedown  = e => { svg.onmousemove = onMove; };
+  document.onmouseup = () => { svg.onmousemove = null; };
+}
+
+function setSleepTimer(val) {
+  clearSleepTimer(false);
+  _sleepMinutes = val;
+  if (val !== 'surah') {
+    _sleepEnd = Date.now() + val * 60 * 1000;
+    _sleepInterval = setInterval(() => {
+      if (Date.now() >= _sleepEnd) { stopPlayback(); clearSleepTimer(false); }
+      else updateSleepBtn();
+    }, 1000);
+  }
+  updateSleepBtn();
+}
+
+function clearSleepTimer(updateBtn) {
+  clearInterval(_sleepInterval);
+  _sleepInterval = null;
+  _sleepEnd      = null;
+  _sleepMinutes  = null;
+  if (updateBtn !== false) updateSleepBtn();
+}
+
+function updateSleepBtn() {
+  const btn   = document.getElementById('sleep-btn');
+  const label = document.getElementById('sleep-btn-label');
+  if (!btn) return;
+  if (_sleepMinutes === null) {
+    btn.classList.remove('active');
+    label.textContent = t('sleep_btn');
+  } else if (_sleepMinutes === 'surah') {
+    btn.classList.add('active');
+    label.textContent = t('sleep_end_of_surah');
+  } else {
+    btn.classList.add('active');
+    const rem = Math.max(0, _sleepEnd - Date.now());
+    const m   = Math.floor(rem / 60000);
+    const s   = Math.floor((rem % 60000) / 1000);
+    label.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+}
+
+// ── Favorites ────────────────────────────────────
+let _favs = JSON.parse(localStorage.getItem('favs') || '[]');
+
+function saveFavs() { localStorage.setItem('favs', JSON.stringify(_favs)); }
+
+function favKey(type, surah, ayah) {
+  return type === 'ayah' ? `a:${surah}:${ayah}` : `s:${surah}`;
+}
+
+function isFav(type, surah, ayah) {
+  const k = favKey(type, surah, ayah);
+  return _favs.some(f => f.key === k);
+}
+
+function toggleFav() {
+  if (!state.surah) return;
+  const type  = state.mode === 'ayah' ? 'ayah' : 'surah';
+  const ayah  = type === 'ayah' ? state.ayah : null;
+  const k     = favKey(type, state.surah, ayah);
+  const idx   = _favs.findIndex(f => f.key === k);
+  if (idx >= 0) {
+    _favs.splice(idx, 1);
+  } else {
+    _favs.unshift({ key: k, type, surah: state.surah, ayah, addedAt: Date.now() });
+  }
+  saveFavs();
+  updateFavBtn();
+  updateProfileValues();
+}
+
+function toggleFavItem(key, e) {
+  e.stopPropagation();
+  const idx = _favs.findIndex(f => f.key === key);
+  if (idx >= 0) { _favs.splice(idx, 1); saveFavs(); }
+  updateProfileValues();
+  renderFavorites();
+  renderList(document.getElementById('search-input').value);
+  updateFavBtn();
+}
+
+function toggleFavSurah(n, e) {
+  e.stopPropagation();
+  const k   = favKey('surah', n, null);
+  const idx = _favs.findIndex(f => f.key === k);
+  if (idx >= 0) _favs.splice(idx, 1);
+  else _favs.unshift({ key: k, type: 'surah', surah: n, ayah: null, addedAt: Date.now() });
+  saveFavs();
+  updateProfileValues();
+  renderList(document.getElementById('search-input').value);
+  updateFavBtn();
+}
+
+function toggleFavAyah(surah, ayah, e) {
+  e.stopPropagation();
+  const k   = favKey('ayah', surah, ayah);
+  const idx = _favs.findIndex(f => f.key === k);
+  if (idx >= 0) _favs.splice(idx, 1);
+  else _favs.unshift({ key: k, type: 'ayah', surah, ayah, addedAt: Date.now() });
+  saveFavs();
+  // refresh ayah list if open
+  if (state.screen === 'ayah-list') openSurahForAyahs(surah);
+  updateFavBtn();
+}
+
+function updateFavBtn() {
+  if (!state.surah) return;
+  const type = state.mode === 'ayah' ? 'ayah' : 'surah';
+  const btn  = document.getElementById('player-fav-btn');
+  if (!btn) return;
+  const active = isFav(type, state.surah, type === 'ayah' ? state.ayah : null);
+  btn.classList.toggle('fav', active);
+}
+
+function renderFavorites() {
+  const el = document.getElementById('favs-list');
+  if (!_favs.length) {
+    el.innerHTML = `
+      <div class="empty-state" style="padding-top:60px;">
+        <div style="font-size:48px;margin-bottom:12px;">🤍</div>
+        <div style="font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px;">${t('favs_empty')}</div>
+        <div style="font-size:13px;">${t('favs_empty_sub')}</div>
+      </div>`;
+    return;
+  }
+  const SVG_HEART = `<svg viewBox="0 0 24 24" fill="#E05C5C" stroke="#E05C5C" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+  el.innerHTML = _favs.map(f => {
+    const s    = SURAHS[f.surah - 1];
+    const name = getSurahName(s);
+    const meta = f.type === 'ayah' ? t('fav_ayah')(f.surah, f.ayah) : t('fav_surah')(f.surah);
+    return `
+    <div class="fav-item" onclick="openFav('${f.key}')">
+      <div class="fav-badge">${SVG_HEART}</div>
+      <div class="fav-info">
+        <div class="fav-name">${name}</div>
+        <div class="fav-meta">${meta}</div>
+      </div>
+      <div class="fav-ar">${s.ar}</div>
+      <button class="fav-remove" onclick="toggleFavItem('${f.key}', event)" title="Удалить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function openFav(key) {
+  const f = _favs.find(x => x.key === key);
+  if (!f) return;
+  stopPlayback();
+  state.surah   = f.surah;
+  state.ayah    = f.ayah || 1;
+  state.mode    = f.type === 'ayah' ? 'ayah' : 'surah';
+  state.progress = 0;
+  state.playing  = true;
+  document.getElementById('tab-surah').classList.toggle('active', state.mode === 'surah');
+  document.getElementById('tab-ayah').classList.toggle('active',  state.mode === 'ayah');
+  showScreen('player');
+  updatePlayerUI();
+}
+
+// ── Init ─────────────────────────────────────────
+applyI18n();
+renderList();
+renderReciters();
+updatePlayerUI();
+</script>
+</body>
+</html>
