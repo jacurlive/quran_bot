@@ -984,6 +984,12 @@
       </div>
 
       <div class="sleep-row">
+        <button class="sleep-btn" id="repeat-btn" onclick="toggleRepeat()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          <span id="repeat-btn-label">Повтор</span>
+        </button>
         <button class="sleep-btn" id="sleep-btn" onclick="openSleepModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -1165,6 +1171,15 @@
 // ── Telegram WebApp ──────────────────────────────
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+
+// ── Register user in DB ──────────────────────────
+if (tg?.initData) {
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: tg.initData }),
+  }).catch(() => {});
+}
 
 // ── Theme ─────────────────────────────────────────
 let _theme = localStorage.getItem('theme') || 'dark';
@@ -1456,6 +1471,7 @@ const state = {
   playing:  false,
   progress: 0,
   mode:     'surah', // 'surah' | 'ayah'
+  repeat:   false,
 };
 
 // ── Navigation ───────────────────────────────────
@@ -1695,7 +1711,18 @@ audioEl.addEventListener('timeupdate', () => {
 audioEl.addEventListener('loadedmetadata', () => {
   document.getElementById('time-total').textContent = formatTime(Math.floor(audioEl.duration));
 });
+function toggleRepeat() {
+  state.repeat = !state.repeat;
+  const btn = document.getElementById('repeat-btn');
+  const label = document.getElementById('repeat-btn-label');
+  if (btn) btn.classList.toggle('active', state.repeat);
+  if (label) label.textContent = state.repeat
+    ? (_lang === 'uz' ? 'Takror' : 'Повтор')
+    : (_lang === 'uz' ? 'Takror' : 'Повтор');
+}
+
 audioEl.addEventListener('ended', () => {
+  if (state.repeat) { audioEl.currentTime = 0; audioEl.play(); return; }
   if (state.mode === 'surah') {
     // "end of surah" sleep timer fires here
     if (_sleepMinutes === 'surah') { stopPlayback(); clearSleepTimer(true); return; }

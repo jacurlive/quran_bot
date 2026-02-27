@@ -8,11 +8,14 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import ErrorEvent
 
+from aiohttp import web
+
 from config import BOT_TOKEN
 from database.db import init_db, close_db, get_db
 from database.models import mark_user_blocked
 from handlers import start, reciter, quran, admin
 from services.uploader import get_client, stop_client
+from services.miniapp_api import make_app
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,10 +59,19 @@ async def main() -> None:
                 await mark_user_blocked(db, user_id)
         return True
 
+    # Start mini app HTTP API
+    api_app = make_app()
+    api_runner = web.AppRunner(api_app)
+    await api_runner.setup()
+    api_site = web.TCPSite(api_runner, "127.0.0.1", 8085)
+    await api_site.start()
+    logger.info("Mini app API started on http://127.0.0.1:8085")
+
     logger.info("Bot started")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        await api_runner.cleanup()
         await close_db()
         await stop_client()
         await bot.session.close()
